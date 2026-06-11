@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户分组商品信息查看器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.85;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* 上传区域 */
+        .upload-area {
+            background: white;
+            border: 2px dashed #d9d9d9;
+            border-radius: 12px;
+            padding: 48px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 24px;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #eef0ff;
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .upload-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 8px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .upload-btn:hover {
+            opacity: 0.9;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* 错误提示 */
+        .error-msg {
+            background: #fff2f0;
+            border: 1px solid #ffccc7;
+            color: #cf1322;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error-msg.show {
+            display: block;
+        }
+
+        /* 用户信息卡片 */
+        .user-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .user-info-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .user-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-id {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .user-stats {
+            display: flex;
+            gap: 24px;
+            margin-top: 8px;
+        }
+
+        .stat-item {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* 分组标签筛选 */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tag {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid #d9d9d9;
+            background: white;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .filter-tag:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-tag.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* 分组卡片网格 */
+        .clusters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .cluster-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .cluster-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .cluster-header {
+            padding: 16px 20px;
+            color: white;
+            position: relative;
+        }
+
+        .cluster-header.compare {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .cluster-header.scene {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .cluster-type-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.3);
+            margin-bottom: 8px;
+        }
+
+        .cluster-tab-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .cluster-slogan {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .cluster-id {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .cluster-body {
+            padding: 16px 20px;
+        }
+
+        .sku-list {
+            list-style: none;
+        }
+
+        .sku-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .sku-item:last-child {
+            border-bottom: none;
+        }
+
+        .sku-index {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f0f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .sku-id {
+            font-size: 14px;
+            color: #333;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        .sku-count-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            background: #f0f2f5;
+            color: #666;
+            margin-left: 8px;
+        }
+
+        /* 未分组商品 */
+        .unclustered-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .unclustered-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .unclustered-title .icon {
+            font-size: 20px;
+        }
+
+        .unclustered-skus {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .unclustered-sku-tag {
+            padding: 6px 14px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            color: #555;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+        }
+
+        /* 隐藏内容区 */
+        .content-area {
+            display: none;
+        }
+
+        .content-area.show {
+            display: block;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .clusters-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .user-stats {
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .header {
+                padding: 16px 20px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+        }
+
+        /* 文件名显示 */
+        .file-info {
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            color: #389e0d;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 统计面板 */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .stats-card .number {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats-card .label {
+            font-size: 13px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        /* 用户分组区域 */
+        .user-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .user-section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .user-section-header .user-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+        }
+
+        .user-section-header .user-id {
+            font-size: 18px;
+        }
+
+        .user-section-header .user-stats {
+            gap: 16px;
+        }
+
+        .user-section .clusters-grid {
+            margin-bottom: 16px;
+        }
+
+        .user-section .unclustered-section {
+            margin-bottom: 0;
+            background: #fafafa;
+            border: 1px solid #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 用户分组商品信息查看器</h1>
+        <p>导入TXT文件，解析并展示用户分组商品数据</p>
+    </div>
+
+    <div class="container">
+        <!-- 上传区域 -->
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <div class="upload-title">拖拽TXT文件到此处，或点击上传</div>
+            <div class="upload-hint">支持包含JSON格式用户分组数据的TXT文件</div>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+            <input type="file" id="fileInput" accept=".txt">
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- 文件信息 -->
+        <div class="file-info" id="fileInfo">
+            <span>📎</span>
+            <span id="fileName"></span>
+        </div>
+
+        <!-- 内容区域 -->
+        <div class="content-area" id="contentArea">
+            <!-- 统计面板 -->
+            <div class="stats-panel" id="statsPanel"></div>
+
+            <!-- 筛选栏 -->
+            <div class="filter-bar" id="filterBar"></div>
+
+            <!-- 按用户分组展示区域 -->
+            <div id="userSections"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        let currentFilter = 'all';
+
+        // 拖拽上传
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        uploadArea.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON') {
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.txt')) {
+                showError('请上传TXT格式的文件');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const content = e.target.result.trim();
+                    const data = parseContent(content);
+                    currentData = data;
+                    currentFilter = 'all';
+
+                    // 显示文件信息
+                    document.getElementById('fileName').textContent = file.name;
+                    document.getElementById('fileInfo').classList.add('show');
+                    hideError();
+
+                    // 渲染页面
+                    renderAll(data);
+                    document.getElementById('contentArea').classList.add('show');
+                    uploadArea.style.display = 'none';
+                } catch (err) {
+                    showError('文件解析失败：' + err.message);
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseContent(content) {
+            // 尝试直接解析JSON（整个文件是一个JSON数组或对象）
+            try {
+                const json = JSON.parse(content);
+                return normalizeData(json);
+            } catch (e) {
+                // 不是纯JSON，尝试其他格式
+            }
+
+            // 尝试按行解析，收集所有有效的JSON行（NDJSON/JSONL格式）
+            const lines = content.split('\n');
+            const parsedItems = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                try {
+                    const json = JSON.parse(line);
+                    // 如果某行本身是数组，展开其元素
+                    if (Array.isArray(json)) {
+                        parsedItems.push(...json);
+                    } else {
+                        parsedItems.push(json);
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+            if (parsedItems.length > 0) {
+                return normalizeData(parsedItems);
+            }
+
+            // 尝试提取多个JSON块（可能跨多行，用花括号边界匹配）
+            let depth = 0;
+            let startPos = -1;
+            for (let i = 0; i < content.length; i++) {
+                if (content[i] === '{') {
+                    if (depth === 0) startPos = i;
+                    depth++;
+                } else if (content[i] === '}') {
+                    depth--;
+                    if (depth === 0 && startPos !== -1) {
+                        const block = content.substring(startPos, i + 1);
+                        try {
+                            const json = JSON.parse(block);
+                            if (Array.isArray(json)) {
+                                parsedItems.push(...json);
+                            } else {
+                                parsedItems.push(json);
+                            }
+                        } catch (e) {
+                            // 忽略无效块
+                        }
+                        startPos = -1;
+                    }
+                }
+            }
+            if (parsedItems.length > 0) {
+                return normalizeData(parsedItems);
+            }
+
+            throw new Error('无法识别文件中的JSON数据格式');
+        }
+
+        function normalizeData(json) {
+            // 兼容数组和单对象
+            if (Array.isArray(json)) {
+                if (json.length === 0) throw new Error('数据为空');
+                return json.map(item => normalizeSingleUser(item));
+            }
+            return [normalizeSingleUser(json)];
+        }
+
+        function normalizeSingleUser(item) {
+            return {
+                userId: item['用户id'] || item.userId || item.user_id || '未知用户',
+                clusters: (item.clusters || []).map(c => ({
+                    clusterId: c.cluster_id || c.clusterId || '',
+                    clusterType: c.cluster_type || c.clusterType || 'unknown',
+                    tabName: c.tab_name || c.tabName || '未命名分组',
+                    slogan: c.slogan || '',
+                    skuIds: c.sku_ids || c.skuIds || c.sku_ids || []
+                })),
+                unclusteredSkus: item.unclustered_skus || item.unclusteredSkus || item.unclustered_skus || [],
+                totalClusters: item.total_clusters || item.totalClusters || (item.clusters || []).length
+            };
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = '❌ ' + msg;
+            el.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('errorMsg').classList.remove('show');
+        }
+
+        function renderAll(data) {
+            renderStats(data);
+            renderFilterBar(data);
+            renderUserSections(data, currentFilter);
+        }
+
+        function renderStats(data) {
+            const totalUsers = data.length;
+            const totalClusters = data.reduce((sum, u) => sum + u.clusters.length, 0);
+            const totalSkus = data.reduce((sum, u) => {
+                const clustered = u.clusters.reduce((s, c) => s + c.skuIds.length, 0);
+                return sum + clustered + u.unclusteredSkus.length;
+            }, 0);
+            const totalUnclustered = data.reduce((sum, u) => sum + u.unclusteredSkus.length, 0);
+
+            document.getElementById('statsPanel').innerHTML = `
+                <div class="stats-card">
+                    <div class="number">${totalUsers}</div>
+                    <div class="label">用户数</div>
+                </div>
+                <div class="stats-card">
+                    <div class="number">${totalClusters}</div>
+                    <div class="label">分组数</div>
+                </div>
+                <div class="stats-card">
+                    <div class="number">${totalSkus}</div>
+                    <div class="label">商品总数</div>
+                </div>
+                <div class="stats-card">
+                    <div class="number">${totalUnclustered}</div>
+                    <div class="label">未分组商品</div>
+                </div>
+            `;
+        }
+
+        function renderFilterBar(data) {
+            const allClusters = data.flatMap(u => u.clusters);
+            const hasCompare = allClusters.some(c => c.clusterType === 'compare');
+            const hasScene = allClusters.some(c => c.clusterType === 'scene');
+
+            let html = '<span class="filter-tag active" data-filter="all" onclick="setFilter(\'all\')">全部</span>';
+            if (hasCompare) {
+                html += '<span class="filter-tag" data-filter="compare" onclick="setFilter(\'compare\')">🔍 对比分组</span>';
+            }
+            if (hasScene) {
+                html += '<span class="filter-tag" data-filter="scene" onclick="setFilter(\'scene\')">🎯 场景分组</span>';
+            }
+
+            document.getElementById('filterBar').innerHTML = html;
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tag').forEach(tag => {
+                tag.classList.toggle('active', tag.dataset.filter === filter);
+            });
+            renderUserSections(currentData, filter);
+        }
+
+        function renderUserSections(data, filter) {
+            const container = document.getElementById('userSections');
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>暂无数据</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = data.map(user => {
+                const initial = user.userId.charAt(0);
+                const compareCount = user.clusters.filter(c => c.clusterType === 'compare').length;
+                const sceneCount = user.clusters.filter(c => c.clusterType === 'scene').length;
+
+                // 按筛选条件过滤该用户的分组
+                const filteredClusters = filter === 'all'
+                    ? user.clusters
+                    : user.clusters.filter(c => c.clusterType === filter);
+
+                // 生成用户头部
+                let sectionHtml = `
+                    <div class="user-section">
+                        <div class="user-section-header">
+                            <div class="user-avatar">${initial}</div>
+                            <div class="user-details">
+                                <div class="user-id">${escapeHtml(user.userId)}</div>
+                                <div class="user-stats">
+                                    <span class="stat-item">分组总数：<span class="stat-value">${user.totalClusters}</span></span>
+                                    <span class="stat-item">对比分组：<span class="stat-value">${compareCount}</span></span>
+                                    <span class="stat-item">场景分组：<span class="stat-value">${sceneCount}</span></span>
+                                    <span class="stat-item">未分组商品：<span class="stat-value">${user.unclusteredSkus.length}</span></span>
+                                </div>
+                            </div>
+                        </div>
+                `;
+
+                // 生成分组卡片
+                if (filteredClusters.length > 0) {
+                    sectionHtml += `<div class="clusters-grid">`;
+                    sectionHtml += filteredClusters.map(cluster => {
+                        const typeLabel = cluster.clusterType === 'compare' ? '对比' : cluster.clusterType === 'scene' ? '场景' : cluster.clusterType;
+                        const typeClass = cluster.clusterType === 'compare' ? 'compare' : 'scene';
+                        return `
+                            <div class="cluster-card">
+                                <div class="cluster-header ${typeClass}">
+                                    <span class="cluster-type-badge">${typeLabel}</span>
+                                    <div class="cluster-tab-name">${escapeHtml(cluster.tabName)}</div>
+                                    ${cluster.slogan ? `<div class="cluster-slogan">${escapeHtml(cluster.slogan)}</div>` : ''}
+                                    <span class="cluster-id">${escapeHtml(cluster.clusterId)}</span>
+                                </div>
+                                <div class="cluster-body">
+                                    <ul class="sku-list">
+                                        ${cluster.skuIds.map((sku, i) => `
+                                            <li class="sku-item">
+                                                <span class="sku-index">${i + 1}</span>
+                                                <span class="sku-id">${escapeHtml(sku)}</span>
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    sectionHtml += `</div>`;
+                } else if (filter !== 'all') {
+                    sectionHtml += `
+                        <div class="empty-state" style="padding:30px 20px;">
+                            <p>该用户暂无${filter === 'compare' ? '对比' : '场景'}分组</p>
+                        </div>
+                    `;
+                }
+
+                // 生成未分组商品
+                if (user.unclusteredSkus.length > 0) {
+                    sectionHtml += `
+                        <div class="unclustered-section">
+                            <div class="unclustered-title">
+                                <span class="icon">📦</span>
+                                未分组商品
+                                <span class="sku-count-badge">${user.unclusteredSkus.length}</span>
+                            </div>
+                            <div class="unclustered-skus">
+                                ${user.unclusteredSkus.map(sku => `
+                                    <span class="unclustered-sku-tag">${escapeHtml(sku)}</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                sectionHtml += `</div>`;
+                return sectionHtml;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return String(str);
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // 重新上传
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && currentData) {
+                currentData = null;
+                document.getElementById('contentArea').classList.remove('show');
+                document.getElementById('fileInfo').classList.remove('show');
+                uploadArea.style.display = '';
+                fileInput.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
